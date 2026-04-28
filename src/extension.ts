@@ -1,4 +1,6 @@
 import * as vscode from "vscode";
+import * as fs from "fs/promises";
+import * as path from "path";
 import { AuthManager } from "./authManager";
 import { CodexClient } from "./codexClient";
 import { VoiceRecorder } from "./voiceRecorder";
@@ -33,8 +35,8 @@ export function activate(context: vscode.ExtensionContext): void {
         try {
           const transcript = await voiceRecorder.stopRecording();
           outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] Transcript: ${transcript}`);
-          panel?.postDraft(transcript);
-          await insertTranscriptIntoCodexChat(transcript);
+          panel?.postTranscript(transcript);
+          await insertTranscriptIntoCodexChat(transcript, workspacePath);
           panel?.postStatus("Transcript inserted into Codex chat and copied to clipboard.");
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -65,7 +67,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("codexvoice.openPanel", () => {
       VoicePanel.createOrShow(context.extensionUri, (transcript) =>
-        handleTranscript(transcript)
+        handleTranscript(transcript, workspacePath)
       );
     }),
     vscode.commands.registerCommand("codexvoice.clearHistory", () => {
@@ -87,7 +89,7 @@ export function deactivate(): void {
   statusBarItem?.dispose();
 }
 
-async function handleTranscript(transcript: string): Promise<void> {
+async function handleTranscript(transcript: string, workspacePath: string | undefined): Promise<void> {
   const panel = VoicePanel.currentPanel;
   const prompt = transcript.trim();
 
@@ -100,7 +102,7 @@ async function handleTranscript(transcript: string): Promise<void> {
   panel?.postStatus("Inserting transcript into Codex chat...");
 
   try {
-    await insertTranscriptIntoCodexChat(prompt);
+    await insertTranscriptIntoCodexChat(prompt, workspacePath);
     panel?.postStatus("Transcript inserted into Codex chat and copied to clipboard.");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -109,13 +111,17 @@ async function handleTranscript(transcript: string): Promise<void> {
   }
 }
 
-async function insertTranscriptIntoCodexChat(transcript: string): Promise<void> {
+async function insertTranscriptIntoCodexChat(
+  transcript: string,
+  workspacePath: string | undefined
+): Promise<void> {
   const text = transcript.trim();
 
   if (!text) {
     throw new Error("No transcript was captured. Try speaking again or type the prompt.");
   }
 
+  await writeTranscriptHandoff(text, workspacePath);
   await vscode.env.clipboard.writeText(text);
   await focusCodexChat();
 
@@ -124,6 +130,26 @@ async function insertTranscriptIntoCodexChat(transcript: string): Promise<void> 
   } catch {
     await vscode.commands.executeCommand("editor.action.clipboardPasteAction");
   }
+}
+
+async function writeTranscriptHandoff(
+  transcript: string,
+  workspacePath: string | undefined
+): Promise<void> {
+  if (!workspacePath) {
+    return;
+  }
+
+  const directory = path.join(workspacePath, ".codex-voice");
+  const createdAt = new Date().toISOString();
+
+  await fs.mkdir(directory, { recursive: true });
+  await fs.writeFile(path.join(directory, "latest-transcript.txt"), transcript, "utf8");
+  await fs.writeFile(
+    path.join(directory, "latest-transcript.json"),
+    `${JSON.stringify({ createdAt, transcript }, null, 2)}\n`,
+    "utf8"
+  );
 }
 
 async function focusCodexChat(): Promise<void> {

@@ -50,11 +50,9 @@
 
       if (typedPrompt) {
         typedPrompt.value = message.text;
-        typedPrompt.focus();
-        typedPrompt.select();
       }
 
-      setStatus("Review the transcript, edit if needed, then press Send.");
+      setStatus("Transcript captured and copied.");
     }
 
     if (message.type === "response" && response) {
@@ -105,7 +103,7 @@
 
   function sendTranscript(text) {
     setTranscript(text);
-    setStatus("Sending to Codex...");
+    setStatus("Inserting into Codex chat...");
     vscode.postMessage({ type: "transcript", text });
   }
 
