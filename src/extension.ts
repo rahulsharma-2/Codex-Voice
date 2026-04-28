@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
+import * as os from "os";
 import * as path from "path";
 import { AuthManager } from "./authManager";
 import { CodexClient } from "./codexClient";
@@ -138,19 +139,19 @@ async function writeTranscriptHandoff(
   transcript: string,
   workspacePath: string | undefined
 ): Promise<void> {
-  if (!workspacePath) {
-    return;
-  }
-
-  const directory = path.join(workspacePath, ".codex-voice");
   const createdAt = new Date().toISOString();
+  const payload = `${JSON.stringify({ createdAt, transcript }, null, 2)}\n`;
+  const directories = [
+    workspacePath ? path.join(workspacePath, ".codex-voice") : undefined,
+    path.join(os.homedir(), ".codex-voice")
+  ].filter((directory): directory is string => Boolean(directory));
 
-  await fs.mkdir(directory, { recursive: true });
-  await fs.writeFile(path.join(directory, "latest-transcript.txt"), transcript, "utf8");
-  await fs.writeFile(
-    path.join(directory, "latest-transcript.json"),
-    `${JSON.stringify({ createdAt, transcript }, null, 2)}\n`,
-    "utf8"
+  await Promise.all(
+    directories.map(async (directory) => {
+      await fs.mkdir(directory, { recursive: true });
+      await fs.writeFile(path.join(directory, "latest-transcript.txt"), transcript, "utf8");
+      await fs.writeFile(path.join(directory, "latest-transcript.json"), payload, "utf8");
+    })
   );
 }
 
