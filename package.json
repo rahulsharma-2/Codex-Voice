@@ -1,0 +1,106 @@
+{
+  "name": "codex-voice",
+  "displayName": "Codex Voice",
+  "description": "Push-to-talk voice assistant for Codex in VS Code.",
+  "version": "0.0.4",
+  "publisher": "codexvoice",
+  "license": "MIT",
+  "files": [
+    "out/**/*.js",
+    "src/panel/webview/**",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Other"
+  ],
+  "keywords": [
+    "codex",
+    "voice",
+    "speech",
+    "assistant",
+    "openai"
+  ],
+  "activationEvents": [
+    "onCommand:codexvoice.startListening",
+    "onCommand:codexvoice.openPanel",
+    "onCommand:codexvoice.clearHistory",
+    "onCommand:codexvoice.checkCodexLogin"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codexvoice.startListening",
+        "title": "Start Listening",
+        "category": "Codex Voice",
+        "icon": "$(mic)"
+      },
+      {
+        "command": "codexvoice.openPanel",
+        "title": "Open Codex Voice Panel",
+        "category": "Codex Voice",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "codexvoice.clearHistory",
+        "title": "Clear Codex Voice History",
+        "category": "Codex Voice",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "codexvoice.checkCodexLogin",
+        "title": "Check Codex Login",
+        "category": "Codex Voice",
+        "icon": "$(account)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "codexvoice.startListening",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "editorTextFocus || sideBarFocus || panelFocus"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "codexvoice.startListening",
+          "when": "view == chatgpt.sidebarView || view == chatgpt.sidebarSecondaryView",
+          "group": "navigation@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "codexvoice.startListening"
+        },
+        {
+          "command": "codexvoice.openPanel"
+        },
+        {
+          "command": "codexvoice.clearHistory"
+        },
+        {
+          "command": "codexvoice.checkCodexLogin"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.2.1",
+    "typescript": "^5.4.5"
+  }
+}

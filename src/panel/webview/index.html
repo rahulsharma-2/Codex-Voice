@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="./style.css">
+  <title>Codex Voice</title>
+</head>
+<body>
+  <main class="app">
+    <section class="toolbar" aria-label="Voice controls">
+      <button id="listenButton" class="mic-button" type="button" title="Start listening">
+        <span class="mic-icon" aria-hidden="true">$(mic)</span>
+        <span>Start / Stop</span>
+      </button>
+      <input id="typedPrompt" class="prompt-input" type="text" placeholder="Type if speech is unavailable">
+      <button id="sendButton" class="icon-button" type="button" title="Send typed prompt">Send</button>
+      <button id="clearButton" class="icon-button" type="button" title="Clear history">Clear</button>
+    </section>
+    <p id="status" class="status">Ready</p>
+    <section class="panel-section" aria-label="Transcript">
+      <h2>Transcript</h2>
+      <p id="transcript" class="placeholder">Click Start, speak with VS Code Speech, then click Codex Voice again to stop.</p>
+    </section>
+    <section class="panel-section response-section" aria-label="Codex response">
+      <h2>Codex Response</h2>
+      <div id="response" class="placeholder">Codex responses will appear here.</div>
+    </section>
+  </main>
+  <script src="./main.js"></script>
+</body>
+</html>
