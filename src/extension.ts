@@ -36,7 +36,8 @@ export function activate(context: vscode.ExtensionContext): void {
           const transcript = await voiceRecorder.stopRecording();
           outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] Transcript: ${transcript}`);
           panel.postDraft(transcript);
-          panel.postStatus("Review the transcript, edit if needed, then press Send.");
+          await insertTranscriptIntoFocusedInput(transcript);
+          panel.postStatus("Transcript inserted into the focused input and copied to clipboard.");
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] ${message}`);
@@ -107,5 +108,21 @@ async function handleTranscript(transcript: string, codexClient: CodexClient): P
     const message = error instanceof Error ? error.message : String(error);
     panel?.postError(message);
     vscode.window.showErrorMessage(message);
+  }
+}
+
+async function insertTranscriptIntoFocusedInput(transcript: string): Promise<void> {
+  const text = transcript.trim();
+
+  if (!text) {
+    throw new Error("No transcript was captured. Try speaking again or type the prompt.");
+  }
+
+  await vscode.env.clipboard.writeText(text);
+
+  try {
+    await vscode.commands.executeCommand("type", { text });
+  } catch {
+    await vscode.commands.executeCommand("editor.action.clipboardPasteAction");
   }
 }
