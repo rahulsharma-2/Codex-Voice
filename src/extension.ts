@@ -8,6 +8,7 @@ import { VoicePanel } from "./panel/VoicePanel";
 
 let statusBarItem: vscode.StatusBarItem | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
+const CODEX_VOICE_TRIGGER = "/codex-voice";
 
 export function activate(context: vscode.ExtensionContext): void {
   const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -37,7 +38,7 @@ export function activate(context: vscode.ExtensionContext): void {
           outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] Transcript: ${transcript}`);
           panel?.postTranscript(transcript);
           await insertTranscriptIntoCodexChat(transcript, workspacePath);
-          panel?.postStatus("Transcript inserted into Codex chat and copied to clipboard.");
+          panel?.postStatus(`${CODEX_VOICE_TRIGGER} inserted into Codex chat. Transcript saved to handoff file.`);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] ${message}`);
@@ -99,11 +100,11 @@ async function handleTranscript(transcript: string, workspacePath: string | unde
   }
 
   panel?.postTranscript(prompt);
-  panel?.postStatus("Inserting transcript into Codex chat...");
+  panel?.postStatus(`Inserting ${CODEX_VOICE_TRIGGER} into Codex chat...`);
 
   try {
     await insertTranscriptIntoCodexChat(prompt, workspacePath);
-    panel?.postStatus("Transcript inserted into Codex chat and copied to clipboard.");
+    panel?.postStatus(`${CODEX_VOICE_TRIGGER} inserted into Codex chat. Transcript saved to handoff file.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     panel?.postError(message);
@@ -126,8 +127,9 @@ async function insertTranscriptIntoCodexChat(
   await focusCodexChat();
 
   try {
-    await vscode.commands.executeCommand("type", { text });
+    await vscode.commands.executeCommand("type", { text: CODEX_VOICE_TRIGGER });
   } catch {
+    await vscode.env.clipboard.writeText(CODEX_VOICE_TRIGGER);
     await vscode.commands.executeCommand("editor.action.clipboardPasteAction");
   }
 }
