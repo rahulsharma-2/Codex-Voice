@@ -24,24 +24,22 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel,
     statusBarItem,
     vscode.commands.registerCommand("codexvoice.startListening", async () => {
-      const panel = VoicePanel.createOrShow(context.extensionUri, (transcript) =>
-        handleTranscript(transcript, codexClient)
-      );
+      const panel = VoicePanel.currentPanel;
       outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] Voice command fired.`);
 
       if (voiceRecorder.isRecording) {
-        panel.postStatus("Stopping VS Code Speech dictation...");
+        panel?.postStatus("Stopping VS Code Speech dictation...");
 
         try {
           const transcript = await voiceRecorder.stopRecording();
           outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] Transcript: ${transcript}`);
-          panel.postDraft(transcript);
-          await insertTranscriptIntoFocusedInput(transcript);
-          panel.postStatus("Transcript inserted into the focused input and copied to clipboard.");
+          panel?.postDraft(transcript);
+          await insertTranscriptIntoCodexChat(transcript);
+          panel?.postStatus("Transcript inserted into Codex chat and copied to clipboard.");
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] ${message}`);
-          panel.postError(`${message} You can still type a prompt and press Send.`);
+          panel?.postError(`${message} The transcript is copied when available, so you can paste it manually.`);
           vscode.window.showErrorMessage(message);
         } finally {
           statusBarItem!.text = "$(mic) Codex Voice";
@@ -52,14 +50,14 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       try {
-        panel.postStatus("VS Code Speech dictation started. Click Codex Voice again to stop.");
+        panel?.postStatus("VS Code Speech dictation started. Click Codex Voice again to stop.");
         statusBarItem!.text = "$(record) Stop Codex Voice";
         statusBarItem!.tooltip = "Stop dictation and import transcript";
         await voiceRecorder.startRecording();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] ${message}`);
-        panel.postError(`${message} You can still type a prompt and press Send.`);
+        panel?.postError(`${message} You can still type a prompt and press Send.`);
         vscode.window.showErrorMessage(message);
         statusBarItem!.text = "$(mic) Codex Voice";
         statusBarItem!.tooltip = "Start Codex Voice listening";
@@ -67,7 +65,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("codexvoice.openPanel", () => {
       VoicePanel.createOrShow(context.extensionUri, (transcript) =>
-        handleTranscript(transcript, codexClient)
+        handleTranscript(transcript)
       );
     }),
     vscode.commands.registerCommand("codexvoice.clearHistory", () => {
@@ -89,7 +87,7 @@ export function deactivate(): void {
   statusBarItem?.dispose();
 }
 
-async function handleTranscript(transcript: string, codexClient: CodexClient): Promise<void> {
+async function handleTranscript(transcript: string): Promise<void> {
   const panel = VoicePanel.currentPanel;
   const prompt = transcript.trim();
 
@@ -99,11 +97,11 @@ async function handleTranscript(transcript: string, codexClient: CodexClient): P
   }
 
   panel?.postTranscript(prompt);
-  panel?.postStatus("Sending transcript to Codex...");
+  panel?.postStatus("Inserting transcript into Codex chat...");
 
   try {
-    const response = await codexClient.sendPrompt(prompt);
-    panel?.postResponse(response.text);
+    await insertTranscriptIntoCodexChat(prompt);
+    panel?.postStatus("Transcript inserted into Codex chat and copied to clipboard.");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     panel?.postError(message);
@@ -111,7 +109,7 @@ async function handleTranscript(transcript: string, codexClient: CodexClient): P
   }
 }
 
-async function insertTranscriptIntoFocusedInput(transcript: string): Promise<void> {
+async function insertTranscriptIntoCodexChat(transcript: string): Promise<void> {
   const text = transcript.trim();
 
   if (!text) {
@@ -119,10 +117,32 @@ async function insertTranscriptIntoFocusedInput(transcript: string): Promise<voi
   }
 
   await vscode.env.clipboard.writeText(text);
+  await focusCodexChat();
 
   try {
     await vscode.commands.executeCommand("type", { text });
   } catch {
     await vscode.commands.executeCommand("editor.action.clipboardPasteAction");
   }
+}
+
+async function focusCodexChat(): Promise<void> {
+  const commands = [
+    "chatgpt.openSidebar",
+    "chatgpt.sidebarSecondaryView.focus",
+    "chatgpt.sidebarView.focus"
+  ];
+
+  for (const command of commands) {
+    try {
+      await vscode.commands.executeCommand(command);
+      await wait(150);
+    } catch {
+      // Different Codex layouts expose different focus commands.
+    }
+  }
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -2,7 +2,7 @@
   "name": "codex-voice",
   "displayName": "Codex Voice",
   "description": "Push-to-talk voice assistant for Codex in VS Code.",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "codexvoice",
   "license": "MIT",
   "files": [
