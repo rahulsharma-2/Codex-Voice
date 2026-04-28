@@ -1,8 +1,12 @@
 import * as vscode from "vscode";
+import * as fs from "fs/promises";
+import * as path from "path";
 
 export class VoiceRecorder {
   private dictationDocument: vscode.TextDocument | undefined;
   private dictationEditor: vscode.TextEditor | undefined;
+
+  constructor(private readonly workspacePath?: string) {}
 
   get isRecording(): boolean {
     return Boolean(this.dictationDocument);
@@ -19,10 +23,8 @@ export class VoiceRecorder {
       await speechExtension.activate();
     }
 
-    this.dictationDocument = await vscode.workspace.openTextDocument({
-      language: "plaintext",
-      content: ""
-    });
+    const dictationFile = await this.prepareDictationFile();
+    this.dictationDocument = await vscode.workspace.openTextDocument(dictationFile);
     this.dictationEditor = await vscode.window.showTextDocument(this.dictationDocument, {
       preview: true,
       preserveFocus: false,
@@ -41,6 +43,7 @@ export class VoiceRecorder {
 
     await vscode.commands.executeCommand("workbench.action.editorDictation.stop");
     await wait(500);
+    await document.save();
 
     const transcript = document.getText().trim();
 
@@ -76,7 +79,17 @@ export class VoiceRecorder {
       preserveFocus: false,
       viewColumn: this.dictationEditor?.viewColumn ?? vscode.ViewColumn.Beside
     });
-    await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
+    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+  }
+
+  private async prepareDictationFile(): Promise<vscode.Uri> {
+    if (!this.workspacePath) {
+      throw new Error("Open a workspace folder before starting Codex Voice.");
+    }
+
+    const filePath = path.join(this.workspacePath, "codex-voice");
+    await fs.writeFile(filePath, "", "utf8");
+    return vscode.Uri.file(filePath);
   }
 }
 

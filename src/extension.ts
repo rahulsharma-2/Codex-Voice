@@ -15,7 +15,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   const codexClient = new CodexClient(workspacePath);
   const authManager = new AuthManager(context, codexClient);
-  const voiceRecorder = new VoiceRecorder();
+  const voiceRecorder = new VoiceRecorder(workspacePath);
   outputChannel = vscode.window.createOutputChannel("Codex Voice");
 
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
