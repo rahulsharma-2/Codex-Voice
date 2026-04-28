@@ -17,6 +17,10 @@ export function activate(context: vscode.ExtensionContext): void {
   const authManager = new AuthManager(context, codexClient);
   const voiceRecorder = new VoiceRecorder(workspacePath);
   outputChannel = vscode.window.createOutputChannel("Codex Voice");
+  ensureRootDictationFile(workspacePath).catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] Failed to prepare codex-voice file: ${message}`);
+  });
 
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBarItem.command = "codexvoice.startListening";
@@ -153,6 +157,20 @@ async function writeTranscriptHandoff(
       await fs.writeFile(path.join(directory, "latest-transcript.json"), payload, "utf8");
     })
   );
+}
+
+async function ensureRootDictationFile(workspacePath: string | undefined): Promise<void> {
+  if (!workspacePath) {
+    return;
+  }
+
+  const filePath = path.join(workspacePath, "codex-voice");
+
+  try {
+    await fs.access(filePath);
+  } catch {
+    await fs.writeFile(filePath, "", "utf8");
+  }
 }
 
 async function focusCodexChat(): Promise<void> {
