@@ -31,6 +31,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     outputChannel,
     statusBarItem,
+    registerUntitledTranscriptMirror(workspacePath),
     vscode.commands.registerCommand("codexvoice.startListening", async () => {
       const panel = VoicePanel.currentPanel;
       outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] Voice command fired.`);
@@ -150,6 +151,10 @@ async function writeTranscriptHandoff(
     path.join(os.homedir(), ".codex-voice")
   ].filter((directory): directory is string => Boolean(directory));
 
+  if (workspacePath) {
+    await fs.writeFile(path.join(workspacePath, "codex-voice"), transcript, "utf8");
+  }
+
   await Promise.all(
     directories.map(async (directory) => {
       await fs.mkdir(directory, { recursive: true });
@@ -171,6 +176,40 @@ async function ensureRootDictationFile(workspacePath: string | undefined): Promi
   } catch {
     await fs.writeFile(filePath, "", "utf8");
   }
+}
+
+function registerUntitledTranscriptMirror(workspacePath: string | undefined): vscode.Disposable {
+  let pendingWrite: NodeJS.Timeout | undefined;
+
+  const mirrorDocument = (document: vscode.TextDocument): void => {
+    if (document.uri.scheme !== "untitled" || document.languageId !== "plaintext") {
+      return;
+    }
+
+    const transcript = document.getText().trim();
+
+    if (!transcript) {
+      return;
+    }
+
+    if (pendingWrite) {
+      clearTimeout(pendingWrite);
+    }
+
+    pendingWrite = setTimeout(() => {
+      writeTranscriptHandoff(transcript, workspacePath).catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        outputChannel?.appendLine(
+          `[${new Date().toLocaleTimeString()}] Failed to mirror Untitled transcript: ${message}`
+        );
+      });
+    }, 250);
+  };
+
+  return vscode.Disposable.from(
+    vscode.workspace.onDidChangeTextDocument((event) => mirrorDocument(event.document)),
+    vscode.workspace.onDidCloseTextDocument((document) => mirrorDocument(document))
+  );
 }
 
 async function focusCodexChat(): Promise<void> {
