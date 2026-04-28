@@ -182,7 +182,7 @@ function registerUntitledTranscriptMirror(workspacePath: string | undefined): vs
   let pendingWrite: NodeJS.Timeout | undefined;
 
   const mirrorDocument = (document: vscode.TextDocument): void => {
-    if (document.uri.scheme !== "untitled" || document.languageId !== "plaintext") {
+    if (document.uri.scheme !== "untitled") {
       return;
     }
 
@@ -206,7 +206,10 @@ function registerUntitledTranscriptMirror(workspacePath: string | undefined): vs
     }, 250);
   };
 
+  vscode.workspace.textDocuments.forEach(mirrorDocument);
+
   return vscode.Disposable.from(
+    vscode.workspace.onDidOpenTextDocument((document) => mirrorDocument(document)),
     vscode.workspace.onDidChangeTextDocument((event) => mirrorDocument(event.document)),
     vscode.workspace.onDidCloseTextDocument((document) => mirrorDocument(document))
   );
